@@ -9,9 +9,11 @@ passport.serializeUser((user, done) => {
 	done(null, user.id);
 });
 passport.deserializeUser((id, done) => {
-	User.findById(id).then(user => {
-		done(null, user);
-	});
+	User.findById(id)
+		.then(user => {
+			done(null, user);
+		})
+		.catch(e => done(e, null));
 });
 
 passport.use(
@@ -22,17 +24,14 @@ passport.use(
 			callbackURL: '/auth/google/callback',
 			proxy: true
 		},
-		(accessToken, refreshToken, profile, done) => {
+		async (accessToken, refreshToken, profile, done) => {
 			const { id } = profile;
-			User.findOne({ googleId: id }).then(existingUser => {
-				if (existingUser) {
-					done(null, existingUser);
-				} else {
-					new User({ googleId: id }).save().then(user => {
-						done(null, user);
-					});
-				}
-			});
+			const existingUser = await User.findOne({ googleId: id });
+			if (existingUser) {
+				return done(null, existingUser);
+			}
+			const user = await new User({ googleId: id }).save();
+			done(null, user);
 		}
 	)
 );
